@@ -1,0 +1,82 @@
+---
+title: "DecisionTree"
+output: html_document
+---
+### Background
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement ¡V a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset). 
+
+### Data
+The training data for this project are available here: 
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here: 
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har. If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment. 
+
+### Loading and processing the training and testing dataset
+```{r loadingData,cache=TRUE}
+library(caret)
+library(randomForest)
+set.seed(1111)
+trainData <- read.table(".\\data\\pml-training.csv",sep=",",header = TRUE, na.strings=c("NA","#DIV/0!",""))
+testData <- read.table(".\\data\\pml-testing.csv",sep=",",header = TRUE, na.strings=c("NA","#DIV/0!",""))
+
+dim(trainData)
+dim(testData)
+
+#Delete unused columns
+trainData <- trainData[,-c(1:7)]
+testData <- testData[,-c(1:7)]
+
+#Delete columns with all missing values
+trainData <- trainData[,colSums(is.na(trainData))==0]
+testData <- testData[,colSums(is.na(testData))==0]
+dim(trainData)
+dim(testData)
+
+head(trainData)
+head(testData)
+```
+
+### Partition traing dataset for cross validation
+```{r partitionData,cache=TRUE}
+inTrain <- createDataPartition(trainData$classe,p=0.75,list=FALSE)
+training <- trainData[inTrain,]
+testing <- trainData[-inTrain,]
+```
+
+
+### The frequency chart for training data
+```{r plotTraingData, echo=FALSE,cache=FALSE}
+plot(training$classe, col="blue", main="The frequency of different classe in training data for train", xlab="classe", ylab="Frequency")
+```
+
+### Build model 1: Decision tree model
+```{r decisionTree,cache=TRUE}
+modFit <- train(classe~.,method="rpart",data=training)
+
+predict1 <- predict(modFit,newdata=testing)
+confusionMatrix(predict1,testing$classe)
+```
+
+```{r plottingChart,cache=FALSE,fig.height=8,fig.width=10}
+plot(modFit$finalModel,uniform=TRUE,main="Classification Tree")
+text(modFit$finalModel,use.n=TRUE,all=TRUE,cex=.8)
+```
+
+### Build model 2: Random forest model
+```{r randomForest,cache=TRUE}
+modFit2 <- randomForest(classe ~. , data=training, method="class")
+predict2 <- predict(modFit2,newdata=testing)
+confusionMatrix(predict2,testing$classe)
+```
+
+### Expected out of sample error
+The sample accuracy is equal to the correct classified observations over the total sample in the data. So, the out of sample error is equal to "1-accuracy" in the sample data. 
+
+### Compare accuracy between models
+According to the confusionmatrix above the two model, the random forest has the better accuracy. So, we choose the "random forest" for our predicting model.
+
